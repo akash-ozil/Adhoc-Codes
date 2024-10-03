@@ -1,0 +1,62 @@
+# Load required libraries
+library(readxl)
+library(dplyr)
+
+# Function to process a single table
+process_table <- function(table_name, sheet_data) {
+  result <- list()
+  
+  for (col_name in names(sheet_data)) {
+    col_data <- sheet_data[[col_name]]
+    
+    # Get distinct values
+    distinct_values <- unique(col_data)
+    
+    # Get 5 sample values
+    sample_values <- sample(col_data, min(5, length(col_data)))
+    
+    # Store results
+    result[[col_name]] <- list(
+      distinct_values = distinct_values,
+      sample_values = sample_values
+    )
+  }
+  
+  return(result)
+}
+
+# Main function to process the Excel file
+process_excel <- function(file_path) {
+  # Get sheet names
+  sheets <- excel_sheets(file_path)
+  
+  all_results <- list()
+  
+  for (sheet_name in sheets) {
+    # Read the sheet
+    sheet_data <- read_excel(file_path, sheet = sheet_name)
+    
+    # Process the table
+    table_results <- process_table(sheet_name, sheet_data)
+    
+    # Store results for this sheet
+    all_results[[sheet_name]] <- table_results
+  }
+  
+  return(all_results)
+}
+
+# Usage
+file_path <- "path/to/your/excel/file.xlsx"
+results <- process_excel(file_path)
+
+# Print results
+for (table_name in names(results)) {
+  cat("Table:", table_name, "\n")
+  for (col_name in names(results[[table_name]])) {
+    cat("  Column:", col_name, "\n")
+    cat("    Distinct values:", paste(results[[table_name]][[col_name]]$distinct_values, collapse = ", "), "\n")
+    cat("    Sample values:", paste(results[[table_name]][[col_name]]$sample_values, collapse = ", "), "\n")
+  }
+  cat("\n")
+}

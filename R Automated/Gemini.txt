@@ -1,0 +1,28 @@
+library(openxlsx)
+
+# Function to extract distinct values and samples
+extract_column_info <- function(data, column_name, num_samples = 5) {
+  distinct_values <- unique(data[[column_name]])
+  sample_values <- sample(data[[column_name]], num_samples)
+  list(distinct_values = distinct_values, sample_values = sample_values)
+}
+
+# Read Excel file
+excel_file <- "your_excel_file.xlsx"
+workbook <- loadWorkbook(excel_file)
+
+# Get sheet names
+sheet_names <- getSheetNames(workbook)
+
+# Iterate through sheets and columns
+for (sheet_name in sheet_names) {
+  sheet <- readWorkbook(workbook, sheet = sheet_name)
+  column_names <- colnames(sheet)
+
+  for (column_name in column_names) {
+    result <- extract_column_info(sheet, column_name)
+    print(paste("Sheet:", sheet_name, "Column:", column_name))
+    print(result)
+    cat("\n")
+  }
+}

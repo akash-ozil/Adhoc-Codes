@@ -1,64 +1,53 @@
-# Load necessary libraries
-library(readxl)  # For reading Excel files
-library(dplyr)   # For data manipulation
+# Required Libraries
+library(DBI)          # For database connections
+library(odbc)         # For SQL connections
+library(readxl)       # For reading Excel files
+library(dplyr)        # For data manipulation
 
-# Function to process a single table and column
-process_column <- function(table_name, column_name) {
-  # Read the table (assuming each table is stored in a different sheet)
-  data <- read_excel("your_excel_file.xlsx", sheet = table_name)
+# Establish a database connection (Update with your connection details)
+con <- dbConnect(odbc::odbc(), 
+                 Driver = "your_driver_name", 
+                 Server = "your_server_name", 
+                 Database = "your_database_name", 
+                 UID = "your_username", 
+                 PWD = "your_password", 
+                 Port = "your_port")
+
+# Load the Excel file (update with your file path)
+excel_path <- "path_to_your_excel_file.xlsx"
+table_column_data <- read_excel(excel_path)
+
+# Loop through the table-column data to fetch details from the database
+output_list <- list()
+
+for (i in 1:nrow(table_column_data)) {
   
-  # Check if the column exists in the table
-  if (!column_name %in% colnames(data)) {
-    stop(paste("Column", column_name, "not found in table", table_name))
-  }
+  table_name <- table_column_data$Table[i]  # Fetch the table name
+  column_name <- table_column_data$Column[i]  # Fetch the column name
   
-  # Extract the column data
-  column_data <- data[[column_name]]
+  # Fetch the first 5 rows and distinct values of the column from the table
+  query <- paste0("SELECT DISTINCT ", column_name, " FROM ", table_name, " LIMIT 5")
   
-  # Remove missing values
-  column_data <- column_data[!is.na(column_data)]
+  # Execute the query to fetch data
+  result <- dbGetQuery(con, query)
   
-  # Get distinct values
-  distinct_values <- unique(column_data)
+  # Case-insensitive handling of column name by normalizing both query result and column name
+  colnames(result) <- tolower(colnames(result))
+  column_name <- tolower(column_name)
   
-  # Sample 5 random values
-  sample_values <- sample(column_data, size = min(5, length(column_data)), replace = FALSE)
+  # Collect distinct values and a 5-sample of the column
+  distinct_values <- unique(result[[column_name]])
+  sample_values <- sample(result[[column_name]], 5, replace = TRUE)
   
-  # Return a list containing distinct values and the sample values
-  return(list(
-    distinct_values = distinct_values,
-    sample_values = sample_values
-  ))
+  # Create the output list for the current column
+  output_list[[paste(table_name, column_name, sep = "_")]] <- list(
+    "Distinct Values" = distinct_values,
+    "Sample Values" = sample_values
+  )
 }
 
-# Main function to process all tables and columns
-process_excel <- function(excel_file, table_column_sheet) {
-  # Read the sheet containing the table and column names
-  table_column_info <- read_excel(excel_file, sheet = table_column_sheet)
-  
-  # Create an empty list to store results
-  results_list <- list()
-  
-  # Loop through each row in the sheet to process the table and column
-  for (i in 1:nrow(table_column_info)) {
-    table_name <- table_column_info$Table[i]
-    column_name <- table_column_info$Column[i]
-    
-    # Process the column and get the result
-    result <- process_column(table_name, column_name)
-    
-    # Store the result in the list
-    results_list[[paste(table_name, column_name, sep = "_")]] <- result
-  }
-  
-  # Return the final list of results
-  return(results_list)
-}
+# Display or store the output
+output_list
 
-# Example usage:
-# Assuming 'table_column_sheet' contains two columns: 'Table' and 'Column',
-# and the Excel file is named "your_excel_file.xlsx".
-results <- process_excel("your_excel_file.xlsx", "table_column_sheet")
-
-# View the results
-print(results)
+# Close the connection
+dbDisconnect(con)
